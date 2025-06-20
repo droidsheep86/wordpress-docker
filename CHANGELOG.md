@@ -21,4 +21,4 @@ All notable changes to this project will be documented in this file.
 - INSTRUCTION renamed to README.md for github
 
 ## [v1.0.04] - 20-06-2025
-- Refine README.md for clarity and remove redundant setup instructions
+- Refine README.md for clarity and remove redundant setup instructions and add .gitignore for wordpress folder
