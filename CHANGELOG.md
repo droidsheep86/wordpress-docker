@@ -1,5 +1,18 @@
-# 1.0.1
-- Update .env and INSTRUCTIONS.md for WordPress Docker setup: change admin credentials and enhance setup instructions
+# Changelog
 
-# 1.0.0
-- INIT
+All notable changes to this project will be documented in this file.
+
+## [Unreleased]
+- Initial setup instructions drafted in INSTRUCTIONS.md
+- Docker Compose setup for PHP 8.2 and MariaDB 10.11
+
+## [v1.0.0] - 20-06-2025
+- First stable version of Docker environment
+- WordPress on Apache, Nginx reverse proxy
+- WP-CLI, Redis, MailHog, PHPMyAdmin support
+
+## [v1.0.01] - 20-06-2025
+- New .env and Instruction.md
+
+## [v1.0.02] - 20-06-2025
+- Update CHANGELOG.md to reflect project changes and version history
