@@ -16,3 +16,6 @@ All notable changes to this project will be documented in this file.
 
 ## [v1.0.02] - 20-06-2025
 - Update CHANGELOG.md to reflect project changes and version history
+
+## [v1.0.03] - 20-06-2025
+- INSTRUCTION renamed to README.md for github
