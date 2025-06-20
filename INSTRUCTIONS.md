@@ -1,59 +1,70 @@
 # WordPress Docker Development Environment
 
-A complete Docker Compose setup for WordPress development with Apache, Nginx reverse proxy, configurable PHP/MariaDB versions, WP-CLI, Redis, and MailHog.
+A complete Docker Compose setup for WordPress development with Apache, Nginx reverse proxy, configurable PHP/MariaDB versions, WP-CLI, Redis, MailHog, and optional PHPMyAdmin.
+
+---
 
 ## Features
 
-- ✅ WordPress on Apache with configurable PHP versions (8.1, 8.2, 8.3)
-- ✅ Nginx reverse proxy serving `wordpress.local`
-- ✅ MariaDB with configurable versions (10.6, 10.11, 11.0, 11.1)
-- ✅ WP-CLI for command-line WordPress management
-- ✅ Redis for object caching
-- ✅ MailHog for email testing
-- ✅ PHPMyAdmin for database management (optional)
+* ✅ WordPress on Apache with configurable PHP versions (8.1, 8.2, 8.3)
+* ✅ Nginx reverse proxy serving `wordpress.local`
+* ✅ MariaDB with configurable versions (10.6, 10.11, 11.0, 11.1)
+* ✅ WP-CLI for command-line WordPress management
+* ✅ Redis for object caching
+* ✅ MailHog for email testing
+* ✅ PHPMyAdmin for database management (optional)
+
+---
 
 ## Prerequisites
 
-- Docker and Docker Compose installed
-- Ability to modify your hosts file
+1. **Docker & Docker Compose** installed on your machine.
+2. Ability to modify your OS hosts file (e.g., `/etc/hosts` on Linux/Mac or `C:\Windows\System32\drivers\etc\hosts` on Windows).
+3. (Optional) Basic familiarity with WP-CLI, but we’ll provide examples.
+
+---
 
 ## Directory Structure
 
-Create this folder structure:
+From your project root (e.g., `wordpress-docker/`), create the following layout:
 
 ```
 wordpress-docker/
 ├── docker-compose.yml          # Main Docker Compose configuration
 ├── .env                        # Environment variables
-├── INSTRUCTIONS.md                  # This file
-├── CHANGELOG.md
+├── INSTRUCTIONS.md             # This file
+├── CHANGELOG.md                # (Optional) Track changes over time
 ├── nginx/
-│   ├── nginx.conf             # Nginx main configuration
+│   ├── nginx.conf              # Nginx main configuration (global)
 │   └── sites/
-│       └── wordpress.conf     # WordPress site configuration
+│       └── wordpress.conf      # WordPress site configuration
 ├── mysql/
-│   └── custom.cnf             # MariaDB custom configuration
-├── uploads.ini                # PHP upload settings
-└── wordpress/                # WordPress directory
+│   └── custom.cnf              # MariaDB custom configuration
+├── uploads.ini                 # PHP upload settings (e.g., upload_max_filesize)
+└── wordpress/                  # WordPress files (bind-mounted)
+    ├── wp-content/
+    │   ├── plugins/
+    │   ├── themes/
+    │   └── uploads/
+    └── (other WP core files)
 ```
 
-## Quick Setup
+> **Tip:** If you prefer, you can rename `wordpress/` to something else, but ensure your `docker-compose.yml` volume paths match.
 
-### 1. Add Local Domain
+---
 
-Add this line to your hosts file:
+## .env Configuration
 
-- **Linux/Mac:** `/etc/hosts`
-```
-127.0.0.1 wordpress.local
-```
-### 2. Change .env files
-```
-Adjust .env variables
+Create a `.env` file in the root (`wordpress-docker/.env`). Example contents:
 
-Defaults are
+```dotenv
+# PHP Version: choose one of php8.1, php8.2, php8.3
+PHP_VERSION=php8.2
 
-# Database Configuration
+# MariaDB Version: choose one of 10.6, 10.11, 11.0, 11.1
+MARIADB_VERSION=10.11
+
+# Database Credentials
 DB_NAME=wordpress
 DB_USER=wordpress
 DB_PASSWORD=wordpress
@@ -61,431 +72,464 @@ DB_ROOT_PASSWORD=rootpassword
 
 # WordPress Site Details
 WP_URL=http://wordpress.local
-WP_TITLE="Wordpress"
-WP_ADMIN_USER=droid
-WP_ADMIN_PASSWORD=@Popopoko0
-WP_ADMIN_EMAIL=droidsheep86@gmail.com
+WP_TITLE="My WordPress Site"
+WP_ADMIN_USER=admin
+WP_ADMIN_PASSWORD=admin123
+WP_ADMIN_EMAIL=admin@example.com
 ```
 
-### 3. Start Environment
+* Adjust values as you like.
+* After changing versions (e.g., `PHP_VERSION` or `MARIADB_VERSION`), you’ll need to rebuild/recreate containers (see below).
+
+---
+
+## Hosts File Entry
+
+Add `wordpress.local` to your hosts file so it resolves to localhost:
+
+* **Linux/Mac**:
+
+  ```bash
+  sudo -- sh -c "echo '127.0.0.1 wordpress.local' >> /etc/hosts"
+  ```
+* **Windows**:
+  Edit `C:\Windows\System32\drivers\etc\hosts` as Administrator and add:
+
+  ```
+  127.0.0.1 wordpress.local
+  ```
+
+> **Note:** If `wordpress.local` conflicts with another entry, pick another hostname (e.g., `wp.local`) and update both `.env` and Nginx config accordingly.
+
+---
+
+## docker-compose.yml Overview
+
+Your `docker-compose.yml` should define services such as:
+
+* **nginx** (reverse proxy)
+* **wordpress** (Apache + PHP-FPM container)
+* **mariadb** (database)
+* **wpcli** (for running WP-CLI commands)
+* **redis** (for object caching)
+* **mailhog** (for email testing)
+* **phpmyadmin** (optional, via a Compose profile like `tools`)
+
+> I assume you already have the YAML; this doc won’t reprint it. Make sure:
+>
+> * Environment variables (via `.env`) are referenced.
+> * Volume mounts point to `./wordpress` and other directories.
+> * Networks are set so nginx can reach the WordPress container.
+> * Redis service is reachable by WordPress (object-cache drop-in plugin).
+> * MailHog is on the same network so WP SMTP plugin can connect.
+
+---
+
+## Start Environment
+
+1. From project root:
+
+   ```bash
+   docker-compose up -d
+   ```
+2. (Optional) To start tools like PHPMyAdmin:
+
+   ```bash
+   docker-compose --profile tools up -d
+   ```
+3. Wait \~20–30 seconds for all containers (especially MariaDB) to be ready.
+
+---
+
+## Install WordPress via WP-CLI
+
+Run once after containers are up:
 
 ```bash
-# Start all services
-docker-compose up -d
-
-# Optional: Start with PHPMyAdmin
-docker-compose --profile tools up -d
-```
-
-### 3. Install WordPress
-
-```bash
-# Wait for services to start (about 30 seconds), then install WordPress
 docker-compose run --rm wpcli wp core install \
-  --url="http://wordpress.local" \
-  --title="My WordPress Site" \
-  --admin_user="admin" \
-  --admin_password="admin123" \
-  --admin_email="admin@example.com"
+  --url="$WP_URL" \
+  --title="$WP_TITLE" \
+  --admin_user="$WP_ADMIN_USER" \
+  --admin_password="$WP_ADMIN_PASSWORD" \
+  --admin_email="$WP_ADMIN_EMAIL"
 ```
 
-## Access Your Services
+* If you change site details, rerun with updated flags.
+* You can also import an existing database or export backup later.
 
-- **WordPress:** http://wordpress.local
-- **WordPress Admin:** http://wordpress.local/wp-admin (admin/admin123)
-- **MailHog:** http://localhost:8025
-- **PHPMyAdmin:** http://localhost:8080 (if using `--profile tools`)
+---
 
-## Configuration
+## Accessing Services
 
-### Change PHP or MariaDB Versions
+* **WordPress Frontend**: [http://wordpress.local](http://wordpress.local)
+* **WordPress Admin**: [http://wordpress.local/wp-admin](http://wordpress.local/wp-admin) (use your admin credentials)
+* **MailHog UI**: [http://localhost:8025](http://localhost:8025)
+* **PHPMyAdmin**: [http://localhost:8080](http://localhost:8080) (if started under `--profile tools`)
 
-Edit the `.env` file:
+> If you pick a different hostname/port, adjust URLs accordingly.
 
-```bash
-# Available PHP versions: php8.1, php8.2, php8.3
-PHP_VERSION=php8.2
+---
 
-# Available MariaDB versions: 10.6, 10.11, 11.0, 11.1
-MARIADB_VERSION=10.11
-```
+## Changing PHP or MariaDB Versions
 
-Apply changes:
+1. Edit `.env`, set `PHP_VERSION` or `MARIADB_VERSION` to desired value.
+2. Recreate containers:
 
-```bash
-docker-compose down
-docker-compose pull
-docker-compose up -d
-```
+   ```bash
+   docker-compose down
+   docker-compose pull          # fetch updated images
+   docker-compose up -d
+   ```
+3. Re-run WP-CLI install or migrations if needed.
+4. Check functionality; sometimes PHP version changes require plugin/theme compatibility checks.
 
-## WP-CLI Usage
+---
 
-```bash
-# List all plugins
-docker-compose run --rm wpcli wp plugin list
+## WP-CLI Usage Examples
 
-# Install and activate a plugin
-docker-compose run --rm wpcli wp plugin install redis-cache --activate
+* **List all plugins**
 
-# Enable Redis cache
-docker-compose run --rm wpcli wp redis enable
+  ```bash
+  docker-compose run --rm wpcli wp plugin list
+  ```
+* **Install & activate a plugin**
 
-# Create a new user
-docker-compose run --rm wpcli wp user create developer dev@example.com --role=administrator
+  ```bash
+  docker-compose run --rm wpcli wp plugin install redis-cache --activate
+  ```
+* **Enable Redis object cache**
 
-# Update WordPress core
-docker-compose run --rm wpcli wp core update
+  ```bash
+  docker-compose run --rm wpcli wp redis enable
+  ```
+* **Check Redis status**
 
-# Flush rewrite rules
-docker-compose run --rm wpcli wp rewrite flush
+  ```bash
+  docker-compose run --rm wpcli wp redis status
+  ```
+* **Create a new admin user**
 
-# Export/Import database
-docker-compose run --rm wpcli wp db export backup.sql
-docker-compose run --rm wpcli wp db import backup.sql
-```
+  ```bash
+  docker-compose run --rm wpcli wp user create developer dev@example.com --role=administrator
+  ```
+* **Update WordPress core**
+
+  ```bash
+  docker-compose run --rm wpcli wp core update
+  ```
+* **Flush rewrite rules**
+
+  ```bash
+  docker-compose run --rm wpcli wp rewrite flush
+  ```
+* **Database export/import**
+
+  ```bash
+  docker-compose run --rm wpcli wp db export backup.sql
+  docker-compose run --rm wpcli wp db import backup.sql
+  ```
+
+---
 
 ## Email Testing with MailHog
 
-**Install WP Mail SMTP Plugin:**
+1. **Install SMTP plugin** (e.g., WP Mail SMTP):
 
-```bash
-docker-compose run --rm wpcli wp plugin install wp-mail-smtp --activate
-```
+   ```bash
+   docker-compose run --rm wpcli wp plugin install wp-mail-smtp --activate
+   ```
+2. **Configure in WP Admin** under SMTP settings:
 
-**Configure SMTP Settings in WordPress:**
+   * SMTP Host: `mailhog`
+   * SMTP Port: `1025`
+   * Authentication: None
+   * Encryption: None
+3. Send a test email from WordPress; view it at [http://localhost:8025](http://localhost:8025).
 
-- SMTP Host: `mailhog`
-- SMTP Port: `1025`
-- Authentication: None
-- Encryption: None
+---
 
-View Emails: [http://localhost:8025](http://localhost:8025)
+## Redis Object Cache Setup
 
-## Redis Cache Setup
+1. **Install Redis Object Cache plugin**:
 
-**Install Redis Object Cache Plugin:**
+   ```bash
+   docker-compose run --rm wpcli wp plugin install redis-cache --activate
+   ```
+2. **Enable Redis**:
 
-```bash
-docker-compose run --rm wpcli wp plugin install redis-cache --activate
-```
+   ```bash
+   docker-compose run --rm wpcli wp redis enable
+   ```
+3. **Verify**:
 
-**Enable Redis:**
+   ```bash
+   docker-compose run --rm wpcli wp redis status
+   ```
+4. Ensure your `docker-compose.yml` has a `redis` service and WordPress PHP container can reach it (host: `redis`, default port 6379).
 
-```bash
-docker-compose run --rm wpcli wp redis enable
-```
+---
 
-**Check Status:**
+## PHPMyAdmin (Optional)
 
-```bash
-docker-compose run --rm wpcli wp redis status
-```
+* Define PHPMyAdmin under a Compose profile, e.g.:
+
+  ```yaml
+  services:
+    phpmyadmin:
+      image: phpmyadmin/phpmyadmin
+      environment:
+        PMA_HOST: mariadb
+        PMA_USER: root
+        PMA_PASSWORD: ${DB_ROOT_PASSWORD}
+      ports:
+        - "8080:80"
+      networks:
+        - your_network_name
+  ```
+* Start with:
+
+  ```bash
+  docker-compose --profile tools up -d phpmyadmin
+  ```
+* Access at: [http://localhost:8080](http://localhost:8080)
+
+---
 
 ## Management Commands
 
-### Start/Stop Environment
+* **Start all services**
 
-```bash
-# Start all services
-docker-compose up -d
+  ```bash
+  docker-compose up -d
+  ```
+* **Stop all services**
 
-# Stop all services
-docker-compose down
+  ```bash
+  docker-compose down
+  ```
+* **Stop & remove containers + volumes (destructive)**
 
-# Stop and remove all data (volumes) (deletes everything except wordpress files which are bind!)
-docker-compose down -v
+  ```bash
+  docker-compose down -v
+  ```
+* **Restart specific service**
 
-# Remove data from wordpress folder
-sudo rm -rf ./wordpress/*
-```
+  ```bash
+  docker-compose restart wordpress
+  docker-compose restart nginx
+  ```
+* **View logs**
 
-### View Logs
-
-```bash
-# All services
-docker-compose logs -f
-
-# Specific service
-docker-compose logs -f wordpress
-docker-compose logs -f nginx
-docker-compose logs -f mariadb
-```
-
-### Restart Services
-
-```bash
-# Restart specific service
-docker-compose restart wordpress
-docker-compose restart nginx
-
-# Restart all services
-docker-compose restart
-```
-
-## Database Management
-
-### Backup Database
-
-```bash
-# Using WP-CLI
-docker-compose run --rm wpcli wp db export backup.sql
-
-# Using mysqldump
-docker-compose exec mariadb mysqldump -u wordpress -p wordpress > backup.sql
-```
-
-### Restore Database
-
-```bash
-# Using WP-CLI
-docker-compose run --rm wpcli wp db import backup.sql
-
-# Using mysql
-docker-compose exec -i mariadb mysql -u wordpress -p wordpress < backup.sql
-```
-
-### Access Database Directly
-
-```bash
-docker-compose exec mariadb mysql -u wordpress -p wordpress
-```
-
-## File Management
-
-- **Themes:** `wp-content/themes/`
-- **Plugins:** `wp-content/plugins/`
-- **Uploads:** `wp-content/uploads/`
-
-### Fix Permissions (if needed)
-
-```bash
-sudo chown -R $USER:$USER wp-content/
-chmod -R 755 wp-content/
-```
-
-## Troubleshooting
-
-### Common Issues
-
-**WordPress not accessible:**
-
-- Check hosts file entry: `127.0.0.1 wordpress.local`
-- Verify services are running: `docker-compose ps`
-- Check nginx logs: `docker-compose logs nginx`
-
-**Database connection error:**
-
-- Wait for MariaDB to fully start (can take 30-60 seconds)
-- Check database logs: `docker-compose logs mariadb`
-- Verify credentials in `.env` file
-
-**Permission errors:**
-
-```bash
-sudo chown -R $USER:$USER wp-content/
-chmod -R 755 wp-content/
-```
-
-**Email not working:**
-
-- Ensure MailHog is running: `docker-compose ps mailhog`
-- Check MailHog interface: [http://localhost:8025](http://localhost:8025)
-- Verify SMTP settings in WordPress
-
-### Reset Everything
-
-```bash
-# Stop and remove all containers and volumes
-docker-compose down -v
-
-# Remove all Docker images (optional)
-docker-compose down --rmi all
-
-# Start fresh
-docker-compose up -d
-```
-
-## Development Tips
-
-### Debugging
-
-- WordPress debug logs: `wp-content/debug.log`
-- PHP errors in Docker logs: `docker-compose logs wordpress`
-- Enable `WP_DEBUG` in `wp-config.php` (already enabled in this setup)
-
-### Performance
-
-- Redis cache is configured and ready to use
-- Nginx serves static files efficiently
-- MariaDB is optimized for development
-
-### Security
-
-- Change default passwords in `.env` for production
-- Disable debug mode for production
-- Use strong passwords for WordPress admin
-
-## Step-by-Step Setup Summary
-
-1. Create folders:  
-   `mkdir -p wordpress-docker/{nginx/sites,mysql,wp-content/{themes,plugins,uploads}}`
-2. Copy files: Save all configuration files from the artifacts above
-3. Add to hosts:  
-   `echo "127.0.0.1 wordpress.local" >> /etc/hosts` (Linux/Mac)
-4. Start Docker:  
-   `docker-compose up -d`
-5. Install WordPress: Use the WP-CLI command provided above
-6. Access site: [http://wordpress.local](http://wordpress.local)
+  ```bash
+  docker-compose logs -f           # all services
+  docker-compose logs -f wordpress  # WordPress container
+  docker-compose logs -f nginx      # Nginx container
+  docker-compose logs -f mariadb    # MariaDB logs
+  ```
 
 ---
 
-Happy WordPress development! 🚀
-# Stop all services
-docker-compose down
-
-# Stop and remove all data (careful!)
-docker-compose down -v
-```
-
-### View Logs
-
-```bash
-# All services
-docker-compose logs -f
-
-# Specific service
-docker-compose logs -f wordpress
-docker-compose logs -f nginx
-docker-compose logs -f mariadb
-```
-
-### Restart Services
-
-```bash
-# Restart specific service
-docker-compose restart wordpress
-docker-compose restart nginx
-
-# Restart all services
-docker-compose restart
-```
-
 ## Database Management
 
-### Backup Database
+* **Backup (WP-CLI)**
 
-```bash
-# Using WP-CLI
-docker-compose run --rm wpcli wp db export backup.sql
+  ```bash
+  docker-compose run --rm wpcli wp db export backup.sql
+  ```
+* **Backup (mysqldump)**
 
-# Using mysqldump
-docker-compose exec mariadb mysqldump -u wordpress -p wordpress > backup.sql
-```
+  ```bash
+  docker-compose exec mariadb mysqldump -u ${DB_USER} -p${DB_PASSWORD} ${DB_NAME} > backup.sql
+  ```
+* **Restore (WP-CLI)**
 
-### Restore Database
+  ```bash
+  docker-compose run --rm wpcli wp db import backup.sql
+  ```
+* **Restore (mysql)**
 
-```bash
-# Using WP-CLI
-docker-compose run --rm wpcli wp db import backup.sql
+  ```bash
+  docker-compose exec -i mariadb mysql -u ${DB_USER} -p${DB_PASSWORD} ${DB_NAME} < backup.sql
+  ```
+* **Access MySQL CLI**
 
-# Using mysql
-docker-compose exec -i mariadb mysql -u wordpress -p wordpress < backup.sql
-```
+  ```bash
+  docker-compose exec mariadb mysql -u ${DB_USER} -p${DB_PASSWORD} ${DB_NAME}
+  ```
 
-### Access Database Directly
-
-```bash
-docker-compose exec mariadb mysql -u wordpress -p wordpress
-```
-
-## File Management
-
-- **Themes:** `wp-content/themes/`
-- **Plugins:** `wp-content/plugins/`
-- **Uploads:** `wp-content/uploads/`
-
-### Fix Permissions (if needed)
-
-```bash
-sudo chown -R $USER:$USER wp-content/
-chmod -R 755 wp-content/
-```
-
-## Troubleshooting
-
-### Common Issues
-
-**WordPress not accessible:**
-
-- Check hosts file entry: `127.0.0.1 wordpress.local`
-- Verify services are running: `docker-compose ps`
-- Check nginx logs: `docker-compose logs nginx`
-
-**Database connection error:**
-
-- Wait for MariaDB to fully start (can take 30-60 seconds)
-- Check database logs: `docker-compose logs mariadb`
-- Verify credentials in `.env` file
-
-**Permission errors:**
-
-```bash
-sudo chown -R $USER:$USER wp-content/
-chmod -R 755 wp-content/
-```
-
-**Email not working:**
-
-- Ensure MailHog is running: `docker-compose ps mailhog`
-- Check MailHog interface: [http://localhost:8025](http://localhost:8025)
-- Verify SMTP settings in WordPress
-
-### Reset Everything
-
-```bash
-# Stop and remove all containers and volumes
-docker-compose down -v
-
-# Remove all Docker images (optional)
-docker-compose down --rmi all
-
-# Start fresh
-docker-compose up -d
-```
-
-## Development Tips
-
-### Debugging
-
-- WordPress debug logs: `wp-content/debug.log`
-- PHP errors in Docker logs: `docker-compose logs wordpress`
-- Enable `WP_DEBUG` in `wp-config.php` (already enabled in this setup)
-
-### Performance
-
-- Redis cache is configured and ready to use
-- Nginx serves static files efficiently
-- MariaDB is optimized for development
-
-### Security
-
-- Change default passwords in `.env` for production
-- Disable debug mode for production
-- Use strong passwords for WordPress admin
-
-## Step-by-Step Setup Summary
-
-1. Create folders:  
-   `mkdir -p wordpress-docker/{nginx/sites,mysql,wp-content/{themes,plugins,uploads}}`
-2. Copy files: Save all configuration files from the artifacts above
-3. Add to hosts:  
-   `echo "127.0.0.1 wordpress.local" >> /etc/hosts` (Linux/Mac)
-4. Start Docker:  
-   `docker-compose up -d`
-5. Install WordPress: Use the WP-CLI command provided above
-6. Access site: [http://wordpress.local](http://wordpress.local)
+> Replace `${DB_USER}`, `${DB_PASSWORD}`, `${DB_NAME}` with your `.env` values.
 
 ---
 
-Happy WordPress development! 🚀
+## File & Permissions
 
+* **Themes:** `wordpress/wp-content/themes/`
+* **Plugins:** `wordpress/wp-content/plugins/`
+* **Uploads:** `wordpress/wp-content/uploads/`
+
+If you run into permission issues (inside container or local mounting), you can:
+
+```bash
+sudo chown -R $USER:$USER wordpress/wp-content/
+chmod -R 755 wordpress/wp-content/
+```
+
+Adjust ownership/group if necessary for your OS/docker setup.
+
+---
+
+## Troubleshooting
+
+### WordPress Not Accessible
+
+* Check hosts entry: ensure `127.0.0.1 wordpress.local` (or your chosen hostname) is present.
+* Confirm containers are running: `docker-compose ps`.
+* Inspect Nginx logs: `docker-compose logs nginx`.
+* Verify WordPress container logs: `docker-compose logs wordpress`.
+
+### Database Connection Errors
+
+* Wait a bit: MariaDB can take 20–30 seconds to initialize on cold start.
+* Check MariaDB logs: `docker-compose logs mariadb`.
+* Verify credentials in `.env` match what `docker-compose.yml` expects.
+
+### Permission Errors
+
+* Run permission fix commands shown above.
+* Ensure bind-mounted volumes do not override container-internal permissions unexpectedly.
+
+### Email Not Arriving
+
+* Confirm MailHog container is running: `docker-compose ps`.
+* Check SMTP settings in WP match `mailhog:1025`.
+* View emails at [http://localhost:8025](http://localhost:8025).
+
+### Redis Issues
+
+* Ensure Redis service is up.
+* Check WordPress plugin status: `docker-compose run --rm wpcli wp redis status`.
+* Confirm network connectivity (service name `redis` in Compose matches WP config).
+
+### Other Common Fixes
+
+* Rebuild images if Dockerfile or PHP extensions changed:
+
+  ```bash
+  docker-compose build --no-cache wordpress
+  docker-compose up -d
+  ```
+* If ports conflict, adjust in `docker-compose.yml` (e.g., change host port mapping).
+* Clear caches: restart containers, flush Redis if needed.
+
+---
+
+## Development Tips
+
+* **Debug Logging**:
+
+  * Ensure `WP_DEBUG` is enabled in `wp-config.php` (you can mount a customized `wp-config.php` or set via environment).
+  * Monitor `wp-content/debug.log` for PHP/WordPress errors.
+  * Check container logs: `docker-compose logs wordpress`.
+
+* **Performance**:
+
+  * Use Redis object cache during development for realistic caching behavior.
+  * Nginx reverse proxy handles static file serving; ensure your static assets (CSS/JS) are loaded via Nginx.
+
+* **Security**:
+
+  * For production-like environments, change default passwords in `.env`.
+  * Disable debug mode for production.
+  * Use strong credentials, and consider SSL (e.g., mkcert or self-signed cert for `wordpress.local`).
+
+* **Version Control**:
+
+  * Add `docker-compose.yml`, `nginx/`, `mysql/custom.cnf`, `uploads.ini`, and other config files to Git.
+  * Avoid committing sensitive credentials; consider a `.env.example` in repo and add `.env` to `.gitignore`.
+
+* **Customization**:
+
+  * You can add extra services (e.g., Adminer, Elasticsearch) by extending `docker-compose.yml`.
+  * Modify PHP settings (`uploads.ini`) by mounting into the PHP container.
+
+---
+
+## Step-by-Step Setup Summary
+
+1. **Clone or create project folder**
+
+   ```bash
+   mkdir -p wordpress-docker/{nginx/sites,mysql}
+   cd wordpress-docker
+   ```
+2. **Place configuration files**
+
+   * `docker-compose.yml` (your Compose file)
+   * `.env` (with your environment variables)
+   * `nginx/nginx.conf` and `nginx/sites/wordpress.conf`
+   * `mysql/custom.cnf`
+   * `uploads.ini`
+   * Ensure `wordpress/` directory exists (empty or with existing WP files).
+3. **Add hosts entry**
+
+   ```bash
+   sudo -- sh -c "echo '127.0.0.1 wordpress.local' >> /etc/hosts"
+   ```
+4. **Start Docker services**
+
+   ```bash
+   docker-compose up -d
+   ```
+5. **Install WordPress via WP-CLI**
+
+   ```bash
+   docker-compose run --rm wpcli wp core install \
+     --url="$WP_URL" \
+     --title="$WP_TITLE" \
+     --admin_user="$WP_ADMIN_USER" \
+     --admin_password="$WP_ADMIN_PASSWORD" \
+     --admin_email="$WP_ADMIN_EMAIL"
+   ```
+6. **Verify**
+
+   * Open [http://wordpress.local](http://wordpress.local) in browser.
+   * Check WP Admin at `/wp-admin`.
+   * Test MailHog, Redis, PHPMyAdmin as needed.
+7. **Develop**
+
+   * Add themes/plugins under `wordpress/wp-content/`.
+   * Use WP-CLI for tasks.
+   * Monitor logs and tweak config.
+
+---
+
+## CHANGELOG.md (Suggested Starter)
+
+```markdown
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+## [Unreleased]
+- Initial setup instructions drafted in INSTRUCTIONS.md
+- Docker Compose setup for PHP 8.2 and MariaDB 10.11
+
+## [v1.0.0] - YYYY-MM-DD
+- First stable version of Docker environment
+- WordPress on Apache, Nginx reverse proxy
+- WP-CLI, Redis, MailHog, PHPMyAdmin support
+```
+
+Replace `YYYY-MM-DD` with the release date when you tag a version.
+
+---
+
+## Final Notes
+
+* This setup is tailored for local development. For staging or production, adapt security, scaling, SSL, backups, etc.
+* If something breaks, start small: check individual container logs, try rebuilding images, confirm network settings.
+* Keep `.env` secrets secure. For team use, share a `.env.example` without real credentials.
+
+---
+
+Happy coding, Droid! Let me know if you need any tweaks or further assistance with specific parts of the Compose file or custom plugin/theme development within this environment. 🚀
