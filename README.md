@@ -105,7 +105,7 @@ Add `wordpress.local` to your hosts file so it resolves to localhost:
 
 ## docker-compose.yml Overview
 
-Your `docker-compose.yml` should define services such as:
+The `docker-compose.yml` should define services such as:
 
 * **nginx** (reverse proxy)
 * **wordpress** (Apache + PHP-FPM container)
@@ -113,15 +113,6 @@ Your `docker-compose.yml` should define services such as:
 * **wpcli** (for running WP-CLI commands)
 * **redis** (for object caching)
 * **mailhog** (for email testing)
-* **phpmyadmin** (optional, via a Compose profile like `tools`)
-
-> I assume you already have the YAML; this doc won’t reprint it. Make sure:
->
-> * Environment variables (via `.env`) are referenced.
-> * Volume mounts point to `./wordpress` and other directories.
-> * Networks are set so nginx can reach the WordPress container.
-> * Redis service is reachable by WordPress (object-cache drop-in plugin).
-> * MailHog is on the same network so WP SMTP plugin can connect.
 
 ---
 
@@ -454,82 +445,8 @@ Adjust ownership/group if necessary for your OS/docker setup.
 
 ---
 
-## Step-by-Step Setup Summary
-
-1. **Clone or create project folder**
-
-   ```bash
-   mkdir -p wordpress-docker/{nginx/sites,mysql}
-   cd wordpress-docker
-   ```
-2. **Place configuration files**
-
-   * `docker-compose.yml` (your Compose file)
-   * `.env` (with your environment variables)
-   * `nginx/nginx.conf` and `nginx/sites/wordpress.conf`
-   * `mysql/custom.cnf`
-   * `uploads.ini`
-   * Ensure `wordpress/` directory exists (empty or with existing WP files).
-3. **Add hosts entry**
-
-   ```bash
-   sudo -- sh -c "echo '127.0.0.1 wordpress.local' >> /etc/hosts"
-   ```
-4. **Start Docker services**
-
-   ```bash
-   docker-compose up -d
-   ```
-5. **Install WordPress via WP-CLI**
-
-   ```bash
-   docker-compose run --rm wpcli wp core install \
-     --url="$WP_URL" \
-     --title="$WP_TITLE" \
-     --admin_user="$WP_ADMIN_USER" \
-     --admin_password="$WP_ADMIN_PASSWORD" \
-     --admin_email="$WP_ADMIN_EMAIL"
-   ```
-6. **Verify**
-
-   * Open [http://wordpress.local](http://wordpress.local) in browser.
-   * Check WP Admin at `/wp-admin`.
-   * Test MailHog, Redis, PHPMyAdmin as needed.
-7. **Develop**
-
-   * Add themes/plugins under `wordpress/wp-content/`.
-   * Use WP-CLI for tasks.
-   * Monitor logs and tweak config.
-
----
-
-## CHANGELOG.md (Suggested Starter)
-
-```markdown
-# Changelog
-
-All notable changes to this project will be documented in this file.
-
-## [Unreleased]
-- Initial setup instructions drafted in INSTRUCTIONS.md
-- Docker Compose setup for PHP 8.2 and MariaDB 10.11
-
-## [v1.0.0] - YYYY-MM-DD
-- First stable version of Docker environment
-- WordPress on Apache, Nginx reverse proxy
-- WP-CLI, Redis, MailHog, PHPMyAdmin support
-```
-
-Replace `YYYY-MM-DD` with the release date when you tag a version.
-
----
-
 ## Final Notes
 
 * This setup is tailored for local development. For staging or production, adapt security, scaling, SSL, backups, etc.
 * If something breaks, start small: check individual container logs, try rebuilding images, confirm network settings.
 * Keep `.env` secrets secure. For team use, share a `.env.example` without real credentials.
-
----
-
-Happy coding, Droid! Let me know if you need any tweaks or further assistance with specific parts of the Compose file or custom plugin/theme development within this environment. 🚀
