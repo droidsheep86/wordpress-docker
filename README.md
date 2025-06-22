@@ -55,7 +55,7 @@ wordpress-docker/
 
 ## .env Configuration
 
-Create a `.env` file in the root (`wordpress-docker/.env`). Example contents:
+Copy `.env.example` to `.env` in the root (`wordpress-docker/.env`) and adjust values as needed. Example contents:
 
 ```dotenv
 # PHP Version: choose one of php8.1, php8.2, php8.3
