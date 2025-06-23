@@ -27,14 +27,12 @@ services:
       WORDPRESS_DB_PASSWORD: ${DB_PASSWORD:-wordpress}
       WORDPRESS_DB_NAME: ${DB_NAME:-wordpress}
       WORDPRESS_CONFIG_EXTRA: |
+        define('DISABLE_WP_CRON', true);
+        define('WP_MEMORY_LIMIT', '512M');
+        define('WP_CACHE', true);
         define('WP_REDIS_HOST', 'redis');
         define('WP_REDIS_PORT', 6379);
         define('WP_REDIS_DATABASE', 0);
-        define('WP_CACHE', true);
-        define('WP_DEBUG', true);
-        define('WP_DEBUG_LOG', true);
-        define('WP_DEBUG_DISPLAY', false);
-        define('SCRIPT_DEBUG', true);
     volumes:
       # CORRECT: This single line handles all wordpress files.
       - ./wordpress:/var/www/html
