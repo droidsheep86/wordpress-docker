@@ -21,6 +21,7 @@ services:
   wordpress:
     image: wordpress:${PHP_VERSION:-php8.2}-apache
     container_name: wordpress_app
+    user: "${UID}:${GID}"
     environment:
       WORDPRESS_DB_HOST: mariadb
       WORDPRESS_DB_USER: ${DB_USER:-wordpress}
